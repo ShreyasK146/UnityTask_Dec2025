@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using Unity.VisualScripting;
 using UnityEditor.Rendering;
 using UnityEngine;
@@ -12,6 +13,7 @@ public class CharacterMovement : MonoBehaviour
     [SerializeField] private float runSpeed = 5;
     [SerializeField] private float jumpHeight = 5;
     [SerializeField] private float mouseSens = 250f;
+    [SerializeField] private TextMeshProUGUI gameEndText;
     private CharacterController characterController;
     private float yRotation;
     Animator animator;
@@ -19,6 +21,7 @@ public class CharacterMovement : MonoBehaviour
     private Vector3 gravityDir = Vector3.down;
     private float gravity = 9.81f;
     Vector3 nextGravityDir = Vector3.down;
+    private float timeToDeath = 10f;
 
     private void Start()
     {
@@ -35,6 +38,7 @@ public class CharacterMovement : MonoBehaviour
         HandleJump();
         UpdateAnimator();
         ChangeGravityDirection();
+        CheckFreeFall();
     }
 
    
@@ -61,9 +65,9 @@ public class CharacterMovement : MonoBehaviour
 
     private void HanldeGravity()
     {
-    
+
         RaycastHit hit;
-        if (Physics.Raycast(transform.position, -gravityDir, out hit, 2f))
+        if (Physics.Raycast(transform.position, gravityDir, out hit, 0.2f))
         {
             isGrounded = true;
         }
@@ -71,8 +75,6 @@ public class CharacterMovement : MonoBehaviour
         {
             isGrounded = false;
         }
-
-  
         velocity += gravityDir * gravity * Time.deltaTime;
 
         characterController.Move(velocity * Time.deltaTime);
@@ -87,6 +89,9 @@ public class CharacterMovement : MonoBehaviour
     }
 
 
+    
+
+
     private void UpdateAnimator()
     {
         if (isGrounded && isMoving)
@@ -95,7 +100,6 @@ public class CharacterMovement : MonoBehaviour
         }
         else 
         {
-            Debug.Log(isGrounded);
             animator.SetBool("isRunning", false);
         }
     }
@@ -123,6 +127,25 @@ public class CharacterMovement : MonoBehaviour
             gravityDir = nextGravityDir.normalized;
         }
         
+    }
+    private void CheckFreeFall()
+    {
+        
+        if (!isGrounded)
+        {
+            Debug.Log(timeToDeath);
+            timeToDeath -= 1f * Time.deltaTime;
+            if(timeToDeath < 0)
+            {
+                gameEndText.gameObject.SetActive(true);
+                Time.timeScale = 0f;
+            }
+                
+        }
+        else
+        {
+            timeToDeath = 10;
+        }
     }
 
 }
