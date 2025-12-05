@@ -5,10 +5,11 @@ using UnityEngine;
 
 public class Timer : MonoBehaviour
 {
-    private int totalTime = 120;
+    private int totalTime = 10;
     [SerializeField] private TextMeshProUGUI remainingTime;
     [SerializeField] private TextMeshProUGUI gameEndText;
-
+    [SerializeField] private CharacterMovement player;
+   
 
     private void Update()
     {
@@ -19,8 +20,13 @@ public class Timer : MonoBehaviour
         else
         {
             remainingTime.text = "0s";
-            gameEndText.gameObject.SetActive(true);
-            Time.timeScale = 0f;
+            if(player.totalCollectableCount != 0)
+            {
+                gameEndText.gameObject.SetActive(true);
+                Time.timeScale = 0f;
+            }
+                
+            
         }
     }
 
