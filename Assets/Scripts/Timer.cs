@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class Timer : MonoBehaviour
 {
-    private int totalTime = 10;
+    private int totalTime = 120;
     [SerializeField] private TextMeshProUGUI remainingTime;
     [SerializeField] private TextMeshProUGUI gameEndText;
     [SerializeField] private CharacterMovement player;
