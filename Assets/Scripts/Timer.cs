@@ -1,5 +1,4 @@
-using System.Collections;
-using System.Collections.Generic;
+
 using TMPro;
 using UnityEngine;
 
@@ -9,8 +8,9 @@ public class Timer : MonoBehaviour
     [SerializeField] private TextMeshProUGUI remainingTime;
     [SerializeField] private TextMeshProUGUI gameEndText;
     [SerializeField] private CharacterMovement player;
+    
    
-
+    // if time ends display game over
     private void Update()
     {
         if(Time.time < totalTime)
@@ -20,7 +20,7 @@ public class Timer : MonoBehaviour
         else
         {
             remainingTime.text = "0s";
-            if(player.totalCollectableCount != 0)
+            if(player.collectedCount != player.totalCollectableCount)
             {
                 gameEndText.gameObject.SetActive(true);
                 Time.timeScale = 0f;

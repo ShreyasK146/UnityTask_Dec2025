@@ -1,42 +1,34 @@
-
-
-
-using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Playables;
 
 public class CharacterMovement : MonoBehaviour
 {
-
     private bool isGrounded = false;
     private float runSpeed = 5;
     private float jumpHeight = 5;
-    private float mouseSens = 250f;
+    public float mouseSensitivity = 50f;
+    private float pitch = 0f;    
+    private float yaw = 0f;
     [SerializeField] private TextMeshProUGUI gameEndText;
     [SerializeField] private Transform cam;
     [SerializeField] private Transform hologram;
     [SerializeField] private Transform headPoint;
+    [SerializeField] private TextMeshProUGUI cubeCollectedCount;
     private float yRotation;
     Animator animator;
-    private Vector3 velocity;
     private Vector3 gravityDir = Vector3.down;
-    private float gravity = 9.81f;
     Vector3 nextGravityDir = Vector3.zero;
-    private float timeToDeath = 100000f;
+    private float timeToDeath = 5f;
     private Rigidbody rb;
     private float horizontalInput, verticalInput;
-    private float turnSmoothVelocity = 0f;
-    private float turnSmoothTime = 0.2f;
     private bool jumpPressed = false;
     public float previewSlerpSpeed = 12f;
-    public float snapOffset = 0.5f; // how far player sits behind hologram when snapping
-    //private bool test = true;
+    public float snapOffset = 0.5f;
     public int totalCollectableCount = 0;
-    //private bool freezeframe = false;
-    //bool lasttest = false;
+    public int collectedCount = 0;
     private Quaternion gravityAlign;
+
     private void Start()
     {
         animator = GetComponent<Animator>();
@@ -51,29 +43,42 @@ public class CharacterMovement : MonoBehaviour
 
     private void Update()
     {
-        // Show hologram always
-        //Debug.Log("LIVE hologram pos: " + hologram.position);
-
-        //if (freezeframe)
-        //{
-        //    //Debug.Log("During freezeframe — hologram pos: " + hologram.position);
-        //    //Debug.Log("During freezeframe — rb pos: " + rb.position);
-        //    return;   // <-- IMPORTANT
-        //}
-
-        // Only run these logs when NOT frozen
-        //Debug.Log("UPDATE writing movement? pos before code: " + rb.position);
-
-        //if (lasttest == true && test == false)
-        //{
-        //    //Debug.Log("TEST EXIT FRAME — rb pos: " + rb.position);
-        //    //Debug.Log("TEST EXIT FRAME — transform pos: " + transform.position);
-        //    //Debug.Log("TEST EXIT FRAME — hologram pos: " + hologram.position);
-        //}
-
-        //lasttest = test;
-
         HandleInput();
+        if (collectedCount == totalCollectableCount)
+        {
+            gameEndText.text = "YOU WIN";
+            gameEndText.gameObject.SetActive(true);
+            Time.timeScale = 0f;
+        }
+
+
+    }
+
+    private void FixedUpdate()
+    {
+        Debug.Log("gravityDir = " + gravityDir);
+        transform.rotation = gravityAlign * Quaternion.Euler(0f, yRotation, 0f);
+       
+
+        HandleCharacterMovement();
+        HandleMouseLook();
+        HanldeGravity();
+        HandleJump();
+        UpdateAnimator();
+        CheckFreeFall();
+        
+
+    }
+
+    #region Input related code
+    private void HandleJump()
+    {
+        if (isGrounded && jumpPressed)
+        {
+            Debug.Log("trying to jump");
+            rb.AddForce(-gravityDir * jumpHeight, ForceMode.Impulse);
+            isGrounded = false; jumpPressed = false;
+        }
     }
 
     private void HandleInput()
@@ -87,211 +92,163 @@ public class CharacterMovement : MonoBehaviour
         ChangeGravityDirection();
 
     }
+    #endregion
 
-    private void FixedUpdate()
-    {
-            //if (freezeframe)
-            //{
-            //    // NO LOGS HERE
-            //    freezeframe = false;
-            //    return;
-            //}
-
-        // Normal frame (not frozen)
-        //Debug.Log("AFTER freezeframe — rb pos: " + rb.position);
-        //Debug.Log("AFTER freezeframe — hologram pos: " + hologram.position);
-        //Debug.Log("FIXEDUPDATE movement start pos: " + rb.position);
-
-        HandleCharacterMovement();
-        //HandleMouseMovement();
-        HanldeGravity();
-        HandleJump();
-        UpdateAnimator();
-        CheckFreeFall();
-    }
-
-
-
+    #region Movement related code. Was unable to setup left and right movement in time so i had to just stick with front and back movement for now
     private void HandleCharacterMovement()
     {
-        //if (freezeframe) return;
-        //if (!test)
-        //{
-        //    Vector3 moveDirection = transform.forward * verticalInput + transform.right * horizontalInput;
-        //    moveDirection.y = 0f;
-        //    moveDirection.Normalize();
+        Vector3 gravityForward = transform.forward;
+        Vector3 gravityRight = transform.right;
 
-        //    // Debug statement for moveDirection
-        //    Debug.Log($"Move Direction: {moveDirection}");
+        Vector3 moveDirection = gravityForward * verticalInput + gravityRight * horizontalInput;
+        moveDirection.Normalize();
+        rb.MovePosition(rb.position + moveDirection * runSpeed * Time.deltaTime);
 
-        //    rb.MovePosition(rb.position + moveDirection * runSpeed * Time.deltaTime);
-
-        //    float targetAngle = Mathf.Atan2(moveDirection.x, moveDirection.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
-
-        //    // Debug statement for targetAngle
-        //    Debug.Log($"Target Angle: {targetAngle}");
-
-        //    float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref turnSmoothVelocity, turnSmoothTime);
-
-        //    // Debug statement for angle
-        //    Debug.Log($"Smooth Angle: {angle}");
-
-        //    transform.rotation = Quaternion.Euler(0f, angle, 0f);
-        //    Vector2 movingDirection = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
-
-        //    // Debugging the final rotation
-        //    Debug.Log($"Final Rotation: {transform.rotation}");
-        //}
-     
-            Vector3 moveDirection = transform.forward * verticalInput + transform.right * horizontalInput;
-            moveDirection.y = 0f;
-            moveDirection.Normalize();
-            rb.MovePosition(rb.position + moveDirection * runSpeed * Time.deltaTime);
-            float targetAngle = Mathf.Atan2(moveDirection.x, moveDirection.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
-            float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref turnSmoothVelocity, turnSmoothTime);
-        transform.rotation = gravityAlign * Quaternion.Euler(0f, angle, 0f);
-
-
-        Vector2 movingDirection = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
-
-            
-        
     }
+    #endregion
 
-    private void HandleMouseMovement()
+    #region Camera Handle (Tried Cinemachine to handle camera couldn't make it work when gravity was changing) :
+    private void HandleMouseLook()
     {
-        //if (freezeframe) return;
-        //if (!test)
-        //{
-        //    float mouseX = Input.GetAxis("Mouse X") * mouseSens * Time.deltaTime;
-        //    yRotation += mouseX;
+        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
+        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
 
-        //    // Debug statement for yRotation before applying
-        //    Debug.Log($"Mouse X: {mouseX}, Y Rotation Before: {yRotation}");
+        yaw += mouseX;
 
-        //    transform.rotation = Quaternion.Euler(0, yRotation, 0);
-
-        //    // Debugging the final rotation after mouse movement
-        //    Debug.Log($"Final Rotation After Mouse Movement: {transform.rotation}");
-        //}
-        
-            float mouseX = Input.GetAxis("Mouse X") * mouseSens * Time.deltaTime;
-            yRotation += mouseX;
-        transform.rotation = gravityAlign * Quaternion.Euler(0, yRotation, 0);
-
-
-
-
+        pitch -= mouseY;
+        pitch = Mathf.Clamp(pitch, -80f, 80f);
+        cam.localRotation = Quaternion.Euler(pitch, yaw, 0f);
     }
+    #endregion
 
+    #region Gravity Handling
     private void HanldeGravity()
     {
 
-        RaycastHit hit;
-        if (Physics.Raycast(transform.position + new Vector3(0, 1f, 0), gravityDir, out hit, 1f))
-        {
-            //Debug.Log(hit.collider.name);
-            isGrounded = true;
-        }
-        else
-        {
-            //Debug.Log("did not hit anything");
-            isGrounded = false;
-        }
-        velocity += gravityDir * gravity * Time.deltaTime;
-        //Debug.DrawRay(transform.position, gravityDir.normalized*1f, Color.red);
-
+        Vector3 gravityDown = gravityDir.normalized;
+        Vector3 rayStart = transform.position - gravityDown * 0.2f;
+        isGrounded = Physics.Raycast(rayStart, gravityDown, out RaycastHit hit, 0.4f);
 
     }
 
-    private void HandleJump()
+    private void ApplyGravityChange()
     {
-        if (isGrounded && jumpPressed)
-        {
-            Debug.Log("trying to jump");
-            rb.AddForce(Vector3.up * jumpHeight, ForceMode.Impulse);
-            isGrounded = false; jumpPressed = false;
-        }
+
+
+        transform.position = hologram.position;
+        rb.position = hologram.position;//might be extra
+
+        transform.rotation = hologram.rotation;
+        rb.rotation = hologram.rotation;//might be extra
+
+        rb.velocity = Vector3.zero;//might be extra
+
+        yRotation = transform.eulerAngles.y;
+        Physics.gravity = nextGravityDir.normalized * Physics.gravity.magnitude;//ex : 9.81 * (0,0,1)
+        gravityAlign = Quaternion.FromToRotation(Vector3.up, -nextGravityDir);//change character standing direction to opposite of its gravity
+        gravityDir = nextGravityDir.normalized;
     }
 
+    private void ChangeGravityDirection()
+    {
+        if (isGrounded)
+        {
+            if (Input.GetKeyDown(KeyCode.LeftArrow))
+            {
+                nextGravityDir = -transform.right;
+                ShowHologramPreview(nextGravityDir);
+            }
+
+
+            if (Input.GetKeyDown(KeyCode.RightArrow))
+            {
+                nextGravityDir = transform.right;
+                ShowHologramPreview(nextGravityDir);
+            }
+
+
+            if (Input.GetKeyDown(KeyCode.UpArrow))
+            {
+                nextGravityDir = transform.forward;
+                ShowHologramPreview(nextGravityDir);
+            }
+
+
+            if (Input.GetKeyDown(KeyCode.DownArrow))
+            {
+                nextGravityDir = -transform.forward;
+                ShowHologramPreview(nextGravityDir);
+            }
+
+            if (Input.GetKeyDown(KeyCode.Return))
+            {
+                ApplyGravityChange();
+                hologram.gameObject.SetActive(false);
+            }
+        }
+
+
+    }
+    //chatgpt starts 
+    private float hologramHeadOffset = 0.0f; 
+
+    
+    private void ShowHologramPreview(Vector3 gravityDir)
+    {
+        hologram.gameObject.SetActive(true);
+
+       
+        hologram.position = headPoint.position;
+
+        Vector3 desiredUp = -gravityDir.normalized; // opposite to gravity
+
+        
+        Vector3 forward = Vector3.ProjectOnPlane(transform.forward, desiredUp);
+
+  
+        if (forward.sqrMagnitude < 1e-6f) // if gravity is acting in same direction as transform.forward the projection may fail so if its close to 0 we go from transform.forward to transform.up
+            forward = Vector3.ProjectOnPlane(transform.up, desiredUp);
+
+        forward = forward.normalized;
+
+        hologram.rotation = Quaternion.LookRotation(forward, desiredUp);
+
+     
+        if (Mathf.Abs(hologramHeadOffset) > 1e-6f) // hologram offset 
+            hologram.position += forward * hologramHeadOffset;
+
+        StartCoroutine(WAIT());
+    }
+    //chatgpt ends
+
+    private IEnumerator WAIT()
+    {
+        yield return new WaitForSeconds(1);
+        hologram.gameObject.SetActive(false);
+    }
+    #endregion
+
+    #region Animation
     private void UpdateAnimator()
     {
         if (isGrounded && (horizontalInput != 0 || verticalInput != 0))
         {
+            animator.SetBool("isFalling", false);
             animator.SetBool("isRunning", true);
         }
-        else
+        else if(isGrounded)
         {
+            animator.SetBool("isFalling", false);
             animator.SetBool("isRunning", false);
         }
+        else if(!isGrounded)
+        {
+            animator.SetBool("isFalling", true);
+        }
     }
+    #endregion
 
-
-
-        private void ChangeGravityDirection()
-    {
-        // Left
-        if (Input.GetKeyDown(KeyCode.LeftArrow))
-        {
-            nextGravityDir = -transform.right;
-            ShowHologramPreview(nextGravityDir);
-        }
-
-        // Right
-        if (Input.GetKeyDown(KeyCode.RightArrow))
-        {
-            nextGravityDir = transform.right;
-            ShowHologramPreview(nextGravityDir);
-        }
-
-        // Forward
-        if (Input.GetKeyDown(KeyCode.UpArrow))
-        {
-            nextGravityDir = transform.forward;
-            ShowHologramPreview(nextGravityDir);
-        }
-
-        // Backwards
-        if (Input.GetKeyDown(KeyCode.DownArrow))
-        {
-            nextGravityDir = -transform.forward;
-            ShowHologramPreview(nextGravityDir);
-        }
-
-        if (Input.GetKeyDown(KeyCode.Return))
-            ApplyGravityChange();
-    
-
-
-}
-
-private void ApplyGravityChange()
-    {
-
-        //Debug.Log("transform and hologram position before apply change :" + transform.position + "," + hologram.position);
-        //Debug.Log("rb pos before apply change :"+ rb.position);
-        transform.position = hologram.position; 
-        rb.position = hologram.position;
-        //Debug.Log("transform and hologram position after apply change :" + transform.position + "," + hologram.position);
-        //Debug.Log("rb pos after apply change :" + rb.position);
-        //Debug.Log("transform and hologram rotation before apply change :" + transform.rotation + "," + hologram.rotation);
-        //Debug.Log("rb rot before apply change :" + rb.rotation);
-        transform.rotation = hologram.rotation; 
-        rb.rotation = hologram.rotation;
-        //Debug.Log("transform and hologram rotation after apply change :" + transform.rotation + "," + hologram.rotation);
-        //Debug.Log("rb rot after apply change :" + rb.rotation);
-        rb.velocity = Vector3.zero;
-        turnSmoothVelocity = 0f;
-        yRotation = transform.eulerAngles.y;    
-        Physics.gravity = nextGravityDir.normalized * Physics.gravity.magnitude;
-        gravityAlign = Quaternion.FromToRotation(Vector3.up, -nextGravityDir);
-        //test = false;
-        //freezeframe = true; 
-    }
-    private void LateUpdate()
-    {
-        //if (freezeframe) freezeframe = false;
-    }
+    #region Free fall check
     private void CheckFreeFall()
     {
 
@@ -308,55 +265,20 @@ private void ApplyGravityChange()
         }
         else
         {
-            timeToDeath = 100000;
+            timeToDeath = 5;
         }
     }
+    #endregion
 
-    private float hologramHeadOffset = 0.0f; // tweak if head isn't aligned (units in meters)
-
-    private void ShowHologramPreview(Vector3 gravityDir)
-    {
-        hologram.gameObject.SetActive(true);
-
-        // Anchor hologram head to headPoint (you may tweak offset below)
-        hologram.position = headPoint.position;
-
-        Vector3 desiredUp = -gravityDir.normalized;
-
-        // Primary forward: local forward projected onto plane of desiredUp
-        Vector3 forward = Vector3.ProjectOnPlane(transform.forward, desiredUp);
-
-        // If degenerate (forward parallel to desiredUp), use local up (head->feet) instead
-        if (forward.sqrMagnitude < 1e-6f)
-            forward = Vector3.ProjectOnPlane(transform.up, desiredUp);
-
-        forward = forward.normalized;
-
-        hologram.rotation = Quaternion.LookRotation(forward, desiredUp);
-
-        // Optional: nudge hologram so its head sits at headPoint.
-        // Adjust 'hologramHeadOffset' (positive moves hologram forward along 'forward').
-        if (Mathf.Abs(hologramHeadOffset) > 1e-6f)
-            hologram.position += forward * hologramHeadOffset;
-
-        StartCoroutine(WAIT());
-    }
-
-
-    private IEnumerator WAIT()
-    {
-        yield return new WaitForSeconds(2);
-        hologram.gameObject.SetActive(false);
-    }
-
-
+    #region Collectible handler
     private void OnTriggerEnter(Collider other)
     {
         if (other.gameObject.tag == "collectable")
         {
             Destroy(other.gameObject);
-            totalCollectableCount--;
+            cubeCollectedCount.text = ++collectedCount + "";
         }
     }
-    
+    #endregion
+
 }
